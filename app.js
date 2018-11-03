@@ -3,28 +3,31 @@ const request = require("request");
 const csv=require('csvtojson');
 const express = require('express');
 const app = express();
+const bodyParser = require('body-parser');
 const ejs = require("ejs");
-var SpotifyWebApi = require('spotify-web-api-node');
+const SpotifyWebApi = require('spotify-web-api-node');
 
-var fetchData = require("./fetchData");
+const readQueryAndWrite = require("./index");
 
 
 //Configuration
 app.use(express.static("public"));
+app.use(bodyParser.urlencoded({ extended: false }))
+
 //ROUTES
 app.get("/", function(req,res){
 	res.render("index.ejs");
 });
 
-app.get("/login", function(req,res){
-	res.redirect(authorizeURL);
+app.post("/" , (req,res) => {
+	let fileName = req.body.file;
+	//Handle file upload
+	let clientId = (req.body.clientId) ? req.body.clientId : null ;
+	let clientSecret = (req.body.clientSecret) ? req.body.clientSecret : null;
+
+	readQueryAndWrite(fileName, clientId, clientSecret);
+	res.render("success.ejs");
 })
-
-
-//Methods
-
-// fetchData();
-
 
 // START THE SERVER
 if (process.env.NODE_ENV === "development"){

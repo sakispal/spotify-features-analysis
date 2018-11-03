@@ -3,15 +3,35 @@
 <head>
  </head>
 <body>
- <div>
-    <div id="login">
-     <h1>First, log in to spotify</h1>
-     <a href="/login">Log in</a>
-    </div>
-    <div id="loggedin">
-    </div>
- </div>
+ 	<div>
+ 		<form action = "/" method = "POST">
+			<label>Please insert your Spotify Client ID </label>
+			<input type="text" name="clientId" placeholder="i.e. %$*(%)&">
+
+			<label>Please insert your Spotify Client Secret </label>
+			<input type="text" name="clientSecret" placeholder="i.e. kfdj**F">
+
+			<label>Please name your file </label>
+			<input type="text" name="file" placeholder="i.e. sheet2">
+
+		   	<input type = "submit" value = "Click to run the script">
+ 		</form>
+ 	</div>
 
 
 </body>
 </html>
+
+
+<style type="text/css">
+	div{
+		width: 400px;
+		height : 200px;
+		margin: 20% auto;
+		display: block;
+	}
+
+	label, input {
+		display : block;
+	}
+</style>

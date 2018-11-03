@@ -1,28 +1,24 @@
 const fs = require ("fs");
-const csv=require('csvtojson');
+const csv = require('csvtojson');
 var SpotifyWebApi = require('spotify-web-api-node');
 const Json2csvParser = require('json2csv').Parser;
 require('dotenv').config();
 
 // Require separate functions
-const convertJSONtoCSV = require("./convertToCSV");
-const createObjectParametersFromExcel = require("./createObjectParametersFromExcel");
+const convertJSONtoCSV = require("./functions/convertToCSV");
+const createObjectParametersFromExcel = require("./functions/createObjectParametersFromExcel");
 
 //EDIT Rename the filename accordingly to read, AND write a new file
 const fileName = "sheet2";
 
-// Create the api object with the credentials
-var spotifyApi = new SpotifyWebApi({
-  clientId : process.env.clientId,
-  clientSecret : process.env.clientSecret
-});
+var notFound = 0;
+var found = 0;
 
-
-async function readQueryAndWrite(){
-    //Read local .csv file && convert to JSON object
+async function readQueryAndWrite(fileName , id, secret){
+    //Read local .csv file && convert to JSON , object
 	let jsonObject = await readFromFile(fileName);
 	// Give enough time to the Spotify access token to be created
-	let token = await getToken();
+	let token = await getToken(id, secret);
 	// Get IDs or Names from the object, search Spotify and return the desired results
 	let finalObj = await createFinalList(jsonObject);
 	//Write the audio features object to a local file 
@@ -35,7 +31,7 @@ async function readQueryAndWrite(){
 	convertJSONtoCSV(fileName, "analysis", true);
 };
 
-readQueryAndWrite();
+// readQueryAndWrite();
 
 function readFromFile(name){
 	const csvFilePath=`./${name}.csv`;
@@ -54,7 +50,14 @@ function readFromFile(name){
 };
 
 // Retrieve an access token, just once at the beginning. For really big queries, we might have to insert a .refreshToken somewhere.
-function getToken(){
+function getToken(id, secret){
+	// Create the api object with the credentials
+	spotifyApi = new SpotifyWebApi({
+		// If the client doesn't provide his own credentials, use process ENVs
+	  	clientId : (id) ? id : process.env.clientId,
+	  	clientSecret : (secret) ? secret : process.env.clientSecret
+	});
+
 	return new Promise ((resolve, reject) => {
 		spotifyApi.clientCredentialsGrant()
 		.then((data) => {
@@ -73,59 +76,66 @@ function getToken(){
 debugger;
 
 function createFinalList(jsonObject){
-	return new Promise (async (resolve, reject) => {
-		let finalFeatures = [];
-		let finalAnalysis = [];
-		let notFound = 0;
-		let found = 0;
+	return new Promise (async (resolve, reject) => {		
 		//Loop through the JSON object
-		for (let i = 0; i < jsonObject.length; i++){
+		let final ={};
+		for (i =0; i< 5; i++){
 			//Extract track name or ID's from the object
 			let params = await createObjectParametersFromExcel(jsonObject[i]);
 			//If track ID is not defined, search for track ID
 			if (!params.id){
 				var id = await searchTracks(params);
-				//Save the track id to the object;
 				params.id = id;
 			}
 			//Else, search based on the provided id from the params object
 			else {
 				var id = params.id;
 			}		
-
 			//If the spotify API returns a good number, keep fetching data, but if"NOT FOUND", log it in
-			if (id !== "NOT FOUND") {
-				//New search for audio features - Occasionally the API decides to throw a ranodm error, hence the try catch block
-				try {
-					var features = await getAudioFeatures(id);
-					var analysisSections = await getAudioAnalysis(id);	
-				} catch (e){
-					console.log(`Features couldn't be updated due to error ${e}`);
-				}
-				//Save ID & audio features inside the track object
-			  	let featuresObject = await updateFeatures(features, params);
-			  	let analysisObject = await updateFeatures(analysisSections, {id : params.id});
-
-				finalFeatures.push(featuresObject);
-				finalAnalysis.push(analysisObject);
-				console.log(`Progress -- Logged song number ${found}`);
-				found++;
-
-			} else {
-				params.id = "NOT FOUND";
-				//Count the NOT FOUND logs
-				notFound++;
-				finalFeatures.push(params);
-			}	
+			final = await connectAccordingToId(id, params, final);
 		}
 		console.log(`Couldn't find ${notFound} songs`);
 		resolve({
-			features : finalFeatures,
-			analysis : finalAnalysis
+			features : final.features,
+			analysis : final.analysis
 		});
 	});
 };
 
+async function connectAccordingToId(id,params, final){
+		if (!final.features){
+			final = {
+				features : [],
+				analysis : []
+			}	
+		}
+
+		if (id !== "NOT FOUND") {
+			//New search for audio features - Occasionally the API decides to throw a ranodm error, hence the try catch block
+			try {
+				var features = await getAudioFeatures(id);
+				var analysisSections = await getAudioAnalysis(id);	
+			} catch (e){
+				console.log(`Features couldn't be updated due to error ${e}`);
+			}
+			//Save ID & audio features inside the track object
+		  	let featuresObject = await updateFeatures(features, params);
+		  	let analysisObject = await updateFeatures(analysisSections, {id : params.id});
+
+			final.features.push(featuresObject);
+			final.analysis.push(analysisObject);
+
+			console.log(`Progress -- Logged song number ${found}`);
+			found++;
+
+		} else {
+			params.id = "NOT FOUND";
+			//Count the NOT FOUND logs
+			notFound++;
+			final.features.push(params);
+		}
+		return final;
+}
 
 function searchTracks(params, specification){
 	return new Promise( async (resolve,reject) => {

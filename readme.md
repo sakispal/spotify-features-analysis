@@ -7,7 +7,7 @@
 	* - Go to https://developer.spotify.com/dashboard/login and login with your account
 	* - Register a new application, and get clientId and client secret
 	* - Open the file 'index.js' with any text editor, in 
-		```javascript
+		```
 		var spotifyApi = new SpotifyWebApi({
   		clientId : process.env.clientId,
   		clientSecret : process.env.clientSecret
