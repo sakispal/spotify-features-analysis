@@ -1,5 +1,5 @@
 const fs = require ("fs");
-const csv=require('csvtojson');
+const csv = require('csvtojson');
 
 const Json2csvParser = require('json2csv').Parser;
 const transformAnalysis = require("./transform");
@@ -10,11 +10,10 @@ async function convertJSONtoCSV(fileName, argument, unwind){
 	  	if (unwind){
 	  		myData = await transformAnalysis(myData); 
 	  		var parser = new Json2csvParser({
-	  			unwind : "",
 	  			unwindBlank : true
 	  		});
 		} else {
-	  		var parser = new Json2csvParser({opts});
+	  		var parser = new Json2csvParser({});
 		}		
 		const csv = parser.parse(myData);
 	    fs.writeFileSync(`./${fileName}-${argument}.csv`, csv);
@@ -24,6 +23,6 @@ async function convertJSONtoCSV(fileName, argument, unwind){
 };
 
 // convertJSONtoCSV("sheet2", "features", false);
-// convertJSONtoCSV("sheet2","analysis", true);
+convertJSONtoCSV("sheet2","analysis", true);
 
 module.exports = convertJSONtoCSV;

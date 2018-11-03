@@ -4,25 +4,11 @@ function transformAnalysis(object){
 			reject("transform can't be perfmored due to error");
 		} else {
 			var transformedObj = [
-				{
-					"id" : "" ,
-					"sections-start" : "",
-					"sections-duration" : "",
-					"sections-confidence": "",
-					"sections-loudness": "",
-					"sections-tempo": "",
-					"sections-tempo_confidence": "",
-					"sections-key" : "",
-					"sections-key_confidence" : "",
-					"sections-mode": "",
-					"sections-mode_confidence": "",
-					"sections-time_signature": "",
-					"sections-time_signature_confidence": ""
-				},
+				{},
 			];
-			// console.log(`Transform is running and received object ${JSON.stringify(object, undefined, 4)}`)
-			//Iterate throught the recived object with K
+			//Iterate throught the recived object with k to access individual songs
 			for (k = 0; k < object.length; k++){
+				//Iterate through the individual song sections
 				for (i = 0; i < (object[k].sections.length); i++){
 					transformedObj.push({
 						id : object[k].id,
@@ -40,10 +26,8 @@ function transformAnalysis(object){
 						"sections-time_signature_confidence" : object[k].sections[i].time_signature_confidence
 					});		
 				};	
-				// console.log(`Transformed object is currently " ${JSON.stringify(transformedObj, undefined, 4)}`);	
 			}
-			// console.log("Transformed object is " + JSON.stringify(transformedObj, undefined, 4));
-			// resolve(transformedObj);
+			resolve(transformedObj);
 		} 
 	});
 };

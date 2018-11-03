@@ -35,7 +35,7 @@ async function readQueryAndWrite(){
 	convertJSONtoCSV(fileName, "analysis", true);
 };
 
-// readQueryAndWrite();
+readQueryAndWrite();
 
 function readFromFile(name){
 	const csvFilePath=`./${name}.csv`;
@@ -70,7 +70,6 @@ function getToken(){
 	});
 };
 
-getToken();
 debugger;
 
 function createFinalList(jsonObject){
@@ -94,7 +93,7 @@ function createFinalList(jsonObject){
 				var id = params.id;
 			}		
 
-			//If the spotify API returns good number, keep fetching data, but if"NOT FOUND", log it in
+			//If the spotify API returns a good number, keep fetching data, but if"NOT FOUND", log it in
 			if (id !== "NOT FOUND") {
 				//New search for audio features - Occasionally the API decides to throw a ranodm error, hence the try catch block
 				try {
@@ -129,7 +128,7 @@ function createFinalList(jsonObject){
 
 
 function searchTracks(params, specification){
-	return new Promise((resolve,reject) => {
+	return new Promise( async (resolve,reject) => {
 
 		const specification = {
 			trackOnly : `track:${params.title}`,
@@ -143,26 +142,13 @@ function searchTracks(params, specification){
 			//This searches in externally hosted content and maximizes the chances of a song being found
 			include_external : "audio"
 		};
-		
+
 	    spotifyApi.searchTracks(specification.artistAndTrack, spotifyOptions)
 	    .then((res) => {
-	    	// console.log("Pulled " + JSON.stringify(res.body, undefined , 4));
-	    	//If no results, search again with track only!!!!!!!!
 	    	if (res.statusCode === 200){
+	    		//If no results, search again with track only!!!!!!!!
 				if (res.body.tracks.total === 0){
-					//New search
-					spotifyApi.searchTracks(specification.trackOnly, spotifyOptions)
-					.then((res) =>{
-						// console.log("Second spotify search pulled " + JSON.stringify(res.body, undefined , 4));
-						if ((res.body.tracks.total === 0)) {
-							resolve("NOT FOUND");
-						} else {
-							resolve(res.body.tracks.items[0].id);
-						}	
-					})
-					.catch((err) => {
-						reject("Second spotify search failed " + err);
-					});
+					resolve(searchTrackOnly(specification.trackOnly, spotifyOptions));
 				} else {
 					//Return the track ID
 					resolve(res.body.tracks.items[0].id);
@@ -176,6 +162,24 @@ function searchTracks(params, specification){
 	    });
 	});
 };
+
+function searchTrackOnly(specification, spotifyOptions){
+	return new Promise((resolve,reject) => {
+		//New search
+		spotifyApi.searchTracks(specification, spotifyOptions)
+		.then((res) =>{
+			if ((res.body.tracks.total === 0)) {
+				resolve("NOT FOUND");
+			} else {
+				resolve(res.body.tracks.items[0].id);
+			}	
+		})
+		.catch((err) => {
+			reject("Second spotify search failed " + err);
+		});
+	}) 
+}
+
 
 function getAudioFeatures(id){
 	return new Promise((resolve,reject) => {

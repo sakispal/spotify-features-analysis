@@ -5,19 +5,25 @@ function createObjectParametersFromExcel(jsonObject){
 		//Check if it has empty spreadsheet titles, or app-generated titles
 		if (jsonObject["Song Title"]){
 			obj.title = jsonObject["Song Title"];
-			obj.composer = jsonObject["Composer"];
-			obj.lyricist= jsonObject["Lyricist"];
 			obj.artist = jsonObject["Artist"];
-			obj.year = jsonObject["Year"];
-			obj.genre = jsonObject["Genre"];
+			if (jsonObject["Composer"]){
+				obj.composer = jsonObject["Composer"];
+				obj.lyricist= jsonObject["Lyricist"];
+				obj.year = jsonObject["Year"];
+				obj.genre = jsonObject["Genre"];
+			}
 		} else {
-			obj.title = jsonObject.title
-			obj.composer = jsonObject.composer;
-			obj.lyricist= jsonObject.lyricist;
+			obj.title = jsonObject.title;
 			obj.artist = jsonObject.artist;
-			obj.year = jsonObject.year;
-			obj.genre = jsonObject.genre;
+			//Check if the file has include composer which means that it has lyricist & year, etc.
+			if (jsonObject.composer){
+				obj.composer = jsonObject.composer;
+				obj.lyricist= jsonObject.lyricist;
+				obj.year = jsonObject.year;
+				obj.genre = jsonObject.genre;
+			}
 		}
+		// IF there is a previosly found ID, keep it instead of searching all over again
 		if (jsonObject.id && jsonObject.id !== "" && jsonObject.id !== "NOT FOUND"){
 			obj.id = jsonObject.id
 		} 
