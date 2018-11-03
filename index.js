@@ -14,33 +14,57 @@ const fileName = "sheet2";
 var notFound = 0;
 var found = 0;
 
-async function readQueryAndWrite(fileName , id, secret){
-    //Read local .csv file && convert to JSON , object
-	let jsonObject = await readFromFile(fileName);
-	// Give enough time to the Spotify access token to be created
-	let token = await getToken(id, secret);
-	// Get IDs or Names from the object, search Spotify and return the desired results
-	let finalObj = await createFinalList(jsonObject);
-	//Write the audio features object to a local file 
-	fs.writeFileSync(`./${fileName}-features.json`, JSON.stringify(finalObj.features, undefined, 4));
-	//Write the sections object & id to a local file
-	fs.writeFileSync(`./${fileName}-analysis.json`, JSON.stringify(finalObj.analysis, undefined, 4));
-	//Convert the audio features object to .csv	
-	convertJSONtoCSV(fileName, "features", false);
-	// //Convert the id & sections object to .csv
-	convertJSONtoCSV(fileName, "analysis", true);
+// async function readQueryAndWrite(fileName , id, secret){
+//     //Read local .csv file && convert to JSON , object
+// 	let jsonObject = await readFromFile(fileName);
+// 	// Give enough time to the Spotify access token to be created
+// 	let token = await getToken(id, secret);
+// 	// Get IDs or Names from the object, search Spotify and return the desired results
+// 	let finalObj = await createFinalList(jsonObject);
+// 	//Write the audio features object to a local file 
+// 	fs.writeFileSync(`./${fileName}-features.json`, JSON.stringify(finalObj.features, undefined, 4));
+// 	//Write the sections object & id to a local file
+// 	fs.writeFileSync(`./${fileName}-analysis.json`, JSON.stringify(finalObj.analysis, undefined, 4));
+// 	//Convert the audio features object to .csv	
+// 	convertJSONtoCSV(fileName, "features", false);
+// 	// //Convert the id & sections object to .csv
+// 	convertJSONtoCSV(fileName, "analysis", true);
+// };
+
+function readQueryAndWrite(file , id, secret){
+	return new Promise (async (resolve, reject) => {
+		//Strip the file name 
+		let fileName = file.name.replace(".csv", "");
+		let fileData = fs.writeFileSync(`./upload-${fileName}.csv`, file.data);
+		// console.log(`read function received ${fileName} and ${fileData}`);
+	    //Read local .csv file && convert to JSON , object
+		let jsonObject = await readFromFile(fileName);
+		// Give enough time to the Spotify access token to be created
+		let token = await getToken(id, secret);
+		// Get IDs or Names from the object, search Spotify and return the desired results
+		let finalObj = await createFinalList(jsonObject);
+		//Write the audio features object to a local file 
+		fs.writeFileSync(`./${fileName}-features.json`, JSON.stringify(finalObj.features, undefined, 4));
+		//Write the sections object & id to a local file
+		fs.writeFileSync(`./${fileName}-analysis.json`, JSON.stringify(finalObj.analysis, undefined, 4));
+		//Convert the audio features object to .csv	
+		resolve({
+			fileAnalysis :  convertJSONtoCSV(fileName, "analysis", true),
+			fileFeatures :  convertJSONtoCSV(fileName, "features", false)
+		});	
+	});
 };
 
 // readQueryAndWrite();
 
 function readFromFile(name){
-	const csvFilePath=`./${name}.csv`;
 	return new Promise((resolve, reject) => {
+		const file = `./upload-${fileName}.csv`;
 		csv()
-		.fromFile(csvFilePath)
+		.fromFile(file)
 		.then((res) => {
 			// console.log(`Read ${JSON.stringify(jsonObj, undefined, 4)}`);
-			fs.writeFileSync(`${name}.json`, JSON.stringify(res, undefined, 4));
+			// fs.writeFileSync(`${name}.json`, JSON.stringify(res, undefined, 4));
 			resolve(res);
 		})
 		.catch((err) =>{
@@ -79,7 +103,7 @@ function createFinalList(jsonObject){
 	return new Promise (async (resolve, reject) => {		
 		//Loop through the JSON object
 		let final ={};
-		for (i =0; i< 5; i++){
+		for (i =0; i< jsonObject.length; i++){
 			//Extract track name or ID's from the object
 			let params = await createObjectParametersFromExcel(jsonObject[i]);
 			//If track ID is not defined, search for track ID

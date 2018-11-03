@@ -16,6 +16,7 @@
     "dotenv": "^6.1.0",
     "ejs": "^2.6.1",
     "express": "^4.16.4",
+    "express-fileupload": "^1.0.0",
     "json2csv": "^4.2.1",
     "spotify-web-api-node": "^4.0.0"
   }

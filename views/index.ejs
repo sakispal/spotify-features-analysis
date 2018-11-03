@@ -4,17 +4,16 @@
  </head>
 <body>
  	<div>
- 		<form action = "/" method = "POST">
+ 		<form action = "/" method = "POST" encType="multipart/form-data">
 			<label>Please insert your Spotify Client ID </label>
 			<input type="text" name="clientId" placeholder="i.e. %$*(%)&">
 
 			<label>Please insert your Spotify Client Secret </label>
 			<input type="text" name="clientSecret" placeholder="i.e. kfdj**F">
 
-			<label>Please name your file </label>
-			<input type="text" name="file" placeholder="i.e. sheet2">
-
-		   	<input type = "submit" value = "Click to run the script">
+			<label>Please upload a csv file </label>
+			<input name="csv" type="file" />
+			<input type='submit' value='Upload!' />
  		</form>
  	</div>
 
