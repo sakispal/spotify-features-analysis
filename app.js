@@ -10,11 +10,12 @@ const fileUpload = require('express-fileupload');
 
 const readQueryAndWrite = require("./index");
 
-
 //Configuration
+var server = app.listen();
 app.use(express.static("public"));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(fileUpload());
+// server.setTimeout(6000);
 
 //ROUTES
 app.get("/", function(req,res){
@@ -22,15 +23,18 @@ app.get("/", function(req,res){
 });
 
 app.post("/" , (req,res) => {
+	//We need a 10min timeout because the process takes ages
+	res.setTimeout(60*10*1000);
 	//Handle file upload
 	global.file = req.files.csv;
 	console.log(`Successfully uploaded file ${file.name}`);
 	//Set spotify API credentials
-	let clientId = (req.body.clientId) ? req.body.clientId : null ;
-	let clientSecret = (req.body.clientSecret) ? req.body.clientSecret : null;
+	let clientId = req.body.clientId || null ;
+	let clientSecret = req.body.clientSecret || null;
 
 	readQueryAndWrite(file, clientId, clientSecret)
 	.then((files) =>{
+
 		res.render("success.ejs");
 	})
 	.catch((err)=>{
@@ -39,11 +43,11 @@ app.post("/" , (req,res) => {
 })
 
 app.get("/features" , (req , res) =>{
-	res.sendFile(`${file.name.replace(".csv", "")}-features.csv` , {root : __dirname});
+	res.sendFile(`${file.name.replace(".csv", "")}-features.xls` , {root : __dirname});
 });
 
 app.get("/analysis" , (req , res) =>{
-	res.sendFile(`${file.name.replace(".csv", "")}-analysis.csv` , {root : __dirname});
+	res.sendFile(`${file.name.replace(".csv", "")}-analysis.xls` , {root : __dirname});
 });
 
 // START THE SERVER
