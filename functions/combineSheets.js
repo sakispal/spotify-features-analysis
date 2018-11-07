@@ -23,7 +23,7 @@ async function combineSheets(file1, file2, argument){
 	fs.writeFileSync(`final-${argument}.xls`, csv);
 }
 
-combineSheets(file1, file2, "dontExist");
+// combineSheets(file1, file2, "dontExist");
 
 function read(file){
 	return new Promise((resolve, reject) => {

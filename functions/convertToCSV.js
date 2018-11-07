@@ -15,7 +15,7 @@ async function convertJSONtoCSV(fileName, argument, unwind){
 	  		var parser = new Json2csvParser({});
 		}		
 		const csv = parser.parse(myData);
-	    fs.writeFileSync(`./${fileName}-${argument}.xls`, csv);
+	    fs.writeFileSync(`./${fileName}-${argument}.csv`, csv);
 	} catch (err) {
 	  console.error(err);
 	}

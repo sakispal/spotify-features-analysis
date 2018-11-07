@@ -8,14 +8,15 @@ const ejs = require("ejs");
 const SpotifyWebApi = require('spotify-web-api-node');
 const fileUpload = require('express-fileupload');
 
+//Set a global variable that warns about server status before calling the main function
+global.serverStatus = true;
 const readQueryAndWrite = require("./index");
 
 //Configuration
-var server = app.listen();
 app.use(express.static("public"));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(fileUpload());
-// server.setTimeout(6000);
+
 
 //ROUTES
 app.get("/", function(req,res){
@@ -34,7 +35,6 @@ app.post("/" , (req,res) => {
 
 	readQueryAndWrite(file, clientId, clientSecret)
 	.then((files) =>{
-
 		res.render("success.ejs");
 	})
 	.catch((err)=>{
@@ -43,11 +43,11 @@ app.post("/" , (req,res) => {
 })
 
 app.get("/features" , (req , res) =>{
-	res.sendFile(`${file.name.replace(".csv", "")}-features.xls` , {root : __dirname});
+	res.sendFile(`${file.name.replace(".csv", "")}-features.csv` , {root : __dirname});
 });
 
 app.get("/analysis" , (req , res) =>{
-	res.sendFile(`${file.name.replace(".csv", "")}-analysis.xls` , {root : __dirname});
+	res.sendFile(`${file.name.replace(".csv", "")}-analysis.csv` , {root : __dirname});
 });
 
 // START THE SERVER
@@ -58,6 +58,6 @@ if (process.env.NODE_ENV === "development"){
 } else { 
 	//Listen to heroku's default port
 	app.listen(process.env.PORT, () => {
-		console.log("Listening to whatever heroku set");
+		console.log("Listening to whatever the client set");
 	});
 }

@@ -7,24 +7,35 @@ require('dotenv').config();
 // Require separate functions
 const convertJSONtoCSV = require("./functions/convertToCSV");
 const createObjectParametersFromExcel = require("./functions/createObjectParametersFromExcel");
+const convertJSONtoXls = require('./functions/jsonToXls');
 
 //EDIT Rename the filename accordingly to read, AND write a new file
-const fileName = "sheet2.csv";
-//Call main function
-readQueryAndWrite(filename, null, null);
+const fileName = "sheet1.csv";
+//Call main function only if the server hasn't started
+if (!global.serverStatus){
+	readQueryAndWrite(fileName, null, null);
+}
+//Tracking variables
+var notFound = 0;
+var found = 0;
 
 function readQueryAndWrite(file , id, secret){
 	//Console.log counters
 	var notFound = 0;
 	var found = 0;
 	return new Promise (async (resolve, reject) => {
-		//Strip the file name 
-		let fileName = file.name.replace(".csv", "");
-		let fileData = fs.writeFileSync(`./upload-${fileName}.csv`, file.data);
-		// console.log(`read function received ${fileName} and ${fileData}`);
-		try {
-			 //Read uploaded .csv file && convert to JSON , object
-			let jsonObject = await readFromFile(fileName);					
+		//Strip the file name depending on whether it's coming from the server, or the text editor
+		var fileName = (file.name) ? file.name.replace(".csv", "") : file.replace('.csv', '');
+		//If file upload, write file and call the read function on that
+		if (file.data){
+			let fileData = fs.writeFileSync(`./upload-${fileName}.csv`, file.data);
+			var jsonObject = await readFromFile(fileName , 'server');
+		} else {
+			//Else, just call read function on the local file	
+			var jsonObject = await readFromFile(fileName , 'local');
+		}
+		
+		try {								
 			// Give enough time to the Spotify access token to be created
 			let token = await getToken(id, secret);
 			// Get IDs or Names from the object, search Spotify and return the desired results
@@ -35,8 +46,10 @@ function readQueryAndWrite(file , id, secret){
 			fs.writeFileSync(`./${fileName}-analysis.json`, JSON.stringify(finalObj.analysis, undefined, 4));
 			//Convert the audio features object to .csv	
 			resolve({
-				fileAnalysis :  convertJSONtoCSV(fileName, "analysis", true),
-				fileFeatures :  convertJSONtoCSV(fileName, "features", false)
+				fileAnalysisCSV :  convertJSONtoCSV(fileName, "analysis", true),
+				fileFeaturesCSV :  convertJSONtoCSV(fileName, "features", false),
+				fileAnalysisXLS :  convertJSONtoXls(fileName, 'features'),
+				fileFeaturesXLS :  convertJSONtoXls(fileName, 'analysis')
 			});	
 		} catch(err){
 			reject('main function threw error ' + err)
@@ -44,12 +57,17 @@ function readQueryAndWrite(file , id, secret){
 	});
 };
 
-function readFromFile(name){
+function readFromFile(fileName , comingFrom){
 	return new Promise((resolve, reject) => {
-		const file = `./upload-${fileName}.csv`;
+		if (comingFrom === 'server'){
+			var file = `./upload-${fileName}.csv`;	
+		} else {
+			var file = `./${fileName}.csv`;
+		}
 		csv()
 		.fromFile(file)
 		.then((res) => {
+			// console.log(`read function about to resolve ${res}`);
 			resolve(res);
 		})
 		.catch((err) =>{
@@ -96,6 +114,7 @@ function createFinalList(jsonObject){
 				params["Search Method"] = returnedSearch.searchMethod;
 				params["Album"] = returnedSearch.album;
  				params["Album Year"] = returnedSearch.album_year;
+ 				params['Track Popularity'] = returnedSearch.popularity;
  			} else {
  				//RUN SEARCH BASED ON THE EXISTING ID TO GET ALBUM & YEAR
  				try {
@@ -103,12 +122,13 @@ function createFinalList(jsonObject){
  					params["Search Method"] = albumInfo.searchMethod;
  					params["Album"] = albumInfo.res.album.name;
  					params["Album Year"] = albumInfo.res.album.release_date;
+ 					params['Track Popularity'] = albumInfo.res.popularity;
  				} 
  				catch (err){
  					reject(`Get tracks function returned error ${err}`);
  				}
  			}
- 		
+			
 			final = await connectAccordingToId(params.id, params, final);
 		}
 		console.log(`Couldn't find ${notFound} songs`);
@@ -181,7 +201,8 @@ function searchTracks(params){
 						id : res.body.tracks.items[0].id,
 						album : res.body.tracks.items[0].album.name,
 						album_year : res.body.tracks.items[0].album.release_date,
-						searchMethod : "Artist + Track"
+						searchMethod : "Artist + Track",
+						popularity : res.body.tracks.items[0].popularity
 					});
 				}
 			} else {
