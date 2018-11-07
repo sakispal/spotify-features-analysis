@@ -1,6 +1,5 @@
 const fs = require ("fs");
 const csv = require('csvtojson');
-
 const Json2csvParser = require('json2csv').Parser;
 const transformAnalysis = require("./transform");
 
@@ -23,6 +22,6 @@ async function convertJSONtoCSV(fileName, argument, unwind){
 };
 
 // convertJSONtoCSV("sheet2", "features", false);
-convertJSONtoCSV("sheet2","analysis", true);
+// convertJSONtoCSV("sheet2","analysis", true);
 
 module.exports = convertJSONtoCSV;

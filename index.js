@@ -7,40 +7,67 @@ require('dotenv').config();
 // Require separate functions
 const convertJSONtoCSV = require("./functions/convertToCSV");
 const createObjectParametersFromExcel = require("./functions/createObjectParametersFromExcel");
+const convertJSONtoXls = require('./functions/jsonToXls');
 
 //EDIT Rename the filename accordingly to read, AND write a new file
-const fileName = "sheet2";
-
+const fileName = "sheet1.csv";
+//Call main function only if the server hasn't started
+if (!global.serverStatus){
+	readQueryAndWrite(fileName, null, null);
+}
+//Tracking variables
 var notFound = 0;
 var found = 0;
 
-async function readQueryAndWrite(fileName , id, secret){
-    //Read local .csv file && convert to JSON , object
-	let jsonObject = await readFromFile(fileName);
-	// Give enough time to the Spotify access token to be created
-	let token = await getToken(id, secret);
-	// Get IDs or Names from the object, search Spotify and return the desired results
-	let finalObj = await createFinalList(jsonObject);
-	//Write the audio features object to a local file 
-	fs.writeFileSync(`./${fileName}-features.json`, JSON.stringify(finalObj.features, undefined, 4));
-	//Write the sections object & id to a local file
-	fs.writeFileSync(`./${fileName}-analysis.json`, JSON.stringify(finalObj.analysis, undefined, 4));
-	//Convert the audio features object to .csv	
-	convertJSONtoCSV(fileName, "features", false);
-	// //Convert the id & sections object to .csv
-	convertJSONtoCSV(fileName, "analysis", true);
+function readQueryAndWrite(file , id, secret){
+	//Console.log counters
+	var notFound = 0;
+	var found = 0;
+	return new Promise (async (resolve, reject) => {
+		//Strip the file name depending on whether it's coming from the server, or the text editor
+		var fileName = (file.name) ? file.name.replace(".csv", "") : file.replace('.csv', '');
+		//If file upload, write file and call the read function on that
+		if (file.data){
+			let fileData = fs.writeFileSync(`./upload-${fileName}.csv`, file.data);
+			var jsonObject = await readFromFile(fileName , 'server');
+		} else {
+			//Else, just call read function on the local file	
+			var jsonObject = await readFromFile(fileName , 'local');
+		}
+		
+		try {								
+			// Give enough time to the Spotify access token to be created
+			let token = await getToken(id, secret);
+			// Get IDs or Names from the object, search Spotify and return the desired results
+			let finalObj = await createFinalList(jsonObject);
+			//Write the audio features object to a local file 
+			fs.writeFileSync(`./${fileName}-features.json`, JSON.stringify(finalObj.features, undefined, 4));
+			//Write the sections object & id to a local file
+			fs.writeFileSync(`./${fileName}-analysis.json`, JSON.stringify(finalObj.analysis, undefined, 4));
+			//Convert the audio features object to .csv	
+			resolve({
+				fileAnalysisCSV :  convertJSONtoCSV(fileName, "analysis", true),
+				fileFeaturesCSV :  convertJSONtoCSV(fileName, "features", false),
+				fileAnalysisXLS :  convertJSONtoXls(fileName, 'features'),
+				fileFeaturesXLS :  convertJSONtoXls(fileName, 'analysis')
+			});	
+		} catch(err){
+			reject('main function threw error ' + err)
+		};		
+	});
 };
 
-// readQueryAndWrite();
-
-function readFromFile(name){
-	const csvFilePath=`./${name}.csv`;
+function readFromFile(fileName , comingFrom){
 	return new Promise((resolve, reject) => {
+		if (comingFrom === 'server'){
+			var file = `./upload-${fileName}.csv`;	
+		} else {
+			var file = `./${fileName}.csv`;
+		}
 		csv()
-		.fromFile(csvFilePath)
+		.fromFile(file)
 		.then((res) => {
-			// console.log(`Read ${JSON.stringify(jsonObj, undefined, 4)}`);
-			fs.writeFileSync(`${name}.json`, JSON.stringify(res, undefined, 4));
+			// console.log(`read function about to resolve ${res}`);
 			resolve(res);
 		})
 		.catch((err) =>{
@@ -54,8 +81,8 @@ function getToken(id, secret){
 	// Create the api object with the credentials
 	spotifyApi = new SpotifyWebApi({
 		// If the client doesn't provide his own credentials, use process ENVs
-	  	clientId : (id) ? id : process.env.clientId,
-	  	clientSecret : (secret) ? secret : process.env.clientSecret
+	  	clientId :  id || process.env.clientId,
+	  	clientSecret : secret || process.env.clientSecret
 	});
 
 	return new Promise ((resolve, reject) => {
@@ -73,26 +100,36 @@ function getToken(id, secret){
 	});
 };
 
-debugger;
-
 function createFinalList(jsonObject){
 	return new Promise (async (resolve, reject) => {		
 		//Loop through the JSON object
 		let final ={};
-		for (i =0; i< 5; i++){
+		for (i =0; i< jsonObject.length; i++){
 			//Extract track name or ID's from the object
 			let params = await createObjectParametersFromExcel(jsonObject[i]);
 			//If track ID is not defined, search for track ID
 			if (!params.id){
-				var id = await searchTracks(params);
-				params.id = id;
-			}
-			//Else, search based on the provided id from the params object
-			else {
-				var id = params.id;
-			}		
-			//If the spotify API returns a good number, keep fetching data, but if"NOT FOUND", log it in
-			final = await connectAccordingToId(id, params, final);
+				var returnedSearch = await searchTracks(params);
+				params.id = returnedSearch.id;
+				params["Search Method"] = returnedSearch.searchMethod;
+				params["Album"] = returnedSearch.album;
+ 				params["Album Year"] = returnedSearch.album_year;
+ 				params['Track Popularity'] = returnedSearch.popularity;
+ 			} else {
+ 				//RUN SEARCH BASED ON THE EXISTING ID TO GET ALBUM & YEAR
+ 				try {
+ 					var albumInfo = await getTracks(params.id);
+ 					params["Search Method"] = albumInfo.searchMethod;
+ 					params["Album"] = albumInfo.res.album.name;
+ 					params["Album Year"] = albumInfo.res.album.release_date;
+ 					params['Track Popularity'] = albumInfo.res.popularity;
+ 				} 
+ 				catch (err){
+ 					reject(`Get tracks function returned error ${err}`);
+ 				}
+ 			}
+			
+			final = await connectAccordingToId(params.id, params, final);
 		}
 		console.log(`Couldn't find ${notFound} songs`);
 		resolve({
@@ -102,7 +139,7 @@ function createFinalList(jsonObject){
 	});
 };
 
-async function connectAccordingToId(id,params, final){
+async function connectAccordingToId(id ,params, final){
 		if (!final.features){
 			final = {
 				features : [],
@@ -135,9 +172,9 @@ async function connectAccordingToId(id,params, final){
 			final.features.push(params);
 		}
 		return final;
-}
+};
 
-function searchTracks(params, specification){
+function searchTracks(params){
 	return new Promise( async (resolve,reject) => {
 
 		const specification = {
@@ -146,8 +183,6 @@ function searchTracks(params, specification){
 		};
 
 		let spotifyOptions = {
-			//Necessary to pull back track IDs only	
-			type : "track",
 			limit : 1,
 			//This searches in externally hosted content and maximizes the chances of a song being found
 			include_external : "audio"
@@ -156,12 +191,19 @@ function searchTracks(params, specification){
 	    spotifyApi.searchTracks(specification.artistAndTrack, spotifyOptions)
 	    .then((res) => {
 	    	if (res.statusCode === 200){
-	    		//If no results, search again with track only!!!!!!!!
 				if (res.body.tracks.total === 0){
-					resolve(searchTrackOnly(specification.trackOnly, spotifyOptions));
+					resolve({ 
+						id : "NOT FOUND", 
+						searchMethod : "Artist + Track"
+					});
 				} else {
-					//Return the track ID
-					resolve(res.body.tracks.items[0].id);
+					resolve({
+						id : res.body.tracks.items[0].id,
+						album : res.body.tracks.items[0].album.name,
+						album_year : res.body.tracks.items[0].album.release_date,
+						searchMethod : "Artist + Track",
+						popularity : res.body.tracks.items[0].popularity
+					});
 				}
 			} else {
 				reject("searchTracks returned error response code " + res.statusCode + "Containing the error object " + JSON.stringify(res.body, undefined, 4));
@@ -173,30 +215,12 @@ function searchTracks(params, specification){
 	});
 };
 
-function searchTrackOnly(specification, spotifyOptions){
-	return new Promise((resolve,reject) => {
-		//New search
-		spotifyApi.searchTracks(specification, spotifyOptions)
-		.then((res) =>{
-			if ((res.body.tracks.total === 0)) {
-				resolve("NOT FOUND");
-			} else {
-				resolve(res.body.tracks.items[0].id);
-			}	
-		})
-		.catch((err) => {
-			reject("Second spotify search failed " + err);
-		});
-	}) 
-}
-
 
 function getAudioFeatures(id){
 	return new Promise((resolve,reject) => {
 		spotifyApi.getAudioFeaturesForTrack(id)
 		.then((res) => {
 			if (res.statusCode === 200){
-				// console.log(`Returned features ${JSON.stringify(res.body, undefined , 4)}`);
 				resolve(res.body);	
 			} else {
 				reject("getAudioFeatures returned error response code " + res.statusCode + "Containing the error object " + JSON.stringify(res.body, undefined, 4));
@@ -213,7 +237,6 @@ function getAudioAnalysis(id){
 		spotifyApi.getAudioAnalysisForTrack(id)
 		.then((res) => {
 			if (res.statusCode === 200){
-				// console.log(`Returned analysis ${JSON.stringify(res.body.sections, undefined , 4)}`);
 				resolve(res.body);	
 			} else {
 				reject("getAudioAnalysis returned error response code " + res.statusCode + "Containing the error object " + JSON.stringify(res.body, undefined, 4));
@@ -221,6 +244,25 @@ function getAudioAnalysis(id){
 		})
 	    .catch((err) => {
 	    	reject("getAudioAnalysis function has returned error " + err);
+	    });
+	});
+};
+
+function getTracks(id){
+	return new Promise((resolve,reject) => {
+		spotifyApi.getTrack(id)
+		.then((res) => {
+			if (res.statusCode === 200){
+				resolve({
+					res : res.body,
+					searchMethod : "By ID"
+				});	
+			} else {
+				reject("getTracks returned error response code " + res.statusCode + "Containing the error object " + JSON.stringify(res.body, undefined, 4));
+			} 
+		})
+	    .catch((err) => {
+	    	reject("getTracks function has returned error " + err);
 	    });
 	});
 };

@@ -3,18 +3,28 @@
 <head>
  </head>
 <body>
+	<div class = "instruct">
+		<strong>Step 1</strong>  
+			<p> First, generate your own Spotify developer credentials</p>
+		    <p> Go to https://developer.spotify.com/dashboard/login and login with your account</p>
+		    <p>Register a new application, and get clientId and client secret</p>
+		<strong>Step 2</strong>      
+			<p>Make sure that the song column is titled "Song Title" or "title" and the artist column is titled "Artist" or "artist"</p>
+			<p>If there is an "id" field, the script will recognize it and run on that</p>
+		<div><strong>Be patient. The process is very resource-intensive. A file of 600 tracks can take even 10 minutes</strong></div>	
+
+	</div>
  	<div>
- 		<form action = "/" method = "POST">
+ 		<form action = "/" method = "POST" encType="multipart/form-data">
 			<label>Please insert your Spotify Client ID </label>
 			<input type="text" name="clientId" placeholder="i.e. %$*(%)&">
 
 			<label>Please insert your Spotify Client Secret </label>
 			<input type="text" name="clientSecret" placeholder="i.e. kfdj**F">
 
-			<label>Please name your file </label>
-			<input type="text" name="file" placeholder="i.e. sheet2">
-
-		   	<input type = "submit" value = "Click to run the script">
+			<label>Please upload a csv file </label>
+			<input name="csv" type="file" />
+			<input type='submit' value='Upload & run the script!!!' />
  		</form>
  	</div>
 
@@ -24,10 +34,15 @@
 
 
 <style type="text/css">
-	div{
-		width: 400px;
+	form{
+		width: 800px;
 		height : 200px;
-		margin: 20% auto;
+		margin: 0% auto;
+		display: block;
+	}
+	.instruct{
+		width : 800px;
+		margin: 0% auto;
 		display: block;
 	}
 
